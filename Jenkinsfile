@@ -85,23 +85,33 @@ pipeline {
       }
     }
 
-    // --- Replace your original Deploy stage with this one ---
     stage('Deploy to Kubernetes') {
-      steps {
-        sh '''
-          set -e
-          export PATH="$WORKSPACE/bin:$PATH"
+  steps {
+    sh '''
+      set -e
+      export PATH="$WORKSPACE/bin:$PATH"
 
-          # Update image tag in manifest (note the capital K in K8s/)
-          sed -i "s#image: .*#image: $IMAGE_NAME:${BUILD_NUMBER}#" K8s/deployment.yaml || true
+      # Update image tag in manifest (note the capital K in K8s/)
+      sed -i "s#image: .*#image: $IMAGE_NAME:${BUILD_NUMBER}#" K8s/deployment.yaml || true
 
-          # Apply using the kubeconfig you copied into the container earlier
-          kubectl --kubeconfig=/var/jenkins_home/.kube/config apply -f K8s/
-          kubectl --kubeconfig=/var/jenkins_home/.kube/config rollout status deployment/cicd-pipeline --timeout=120s
-        '''
-      }
-    }
+      # Find host-forwarded port for Minikube API (8443 in the minikube container)
+      API_PORT="$(docker inspect -f '{{(index (index .NetworkSettings.Ports "8443/tcp") 0).HostPort}}' minikube)"
+      KUBE_SERVER="https://host.docker.internal:${API_PORT}"
+
+      # Apply and wait (override server & skip TLS hostname mismatch)
+      kubectl --kubeconfig=/var/jenkins_home/.kube/config \
+              --server="$KUBE_SERVER" \
+              --insecure-skip-tls-verify=true \
+              apply -f K8s/
+
+      kubectl --kubeconfig=/var/jenkins_home/.kube/config \
+              --server="$KUBE_SERVER" \
+              --insecure-skip-tls-verify=true \
+              rollout status deployment/cicd-pipeline --timeout=120s
+    '''
   }
+}
+
 
   post {
     success { echo 'Deploy succeeded' }
