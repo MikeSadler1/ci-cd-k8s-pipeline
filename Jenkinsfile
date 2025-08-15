@@ -2,8 +2,8 @@ pipeline {
   agent any
 
   environment {
-    DOCKERHUB_USER = '' // set at job level or here
-    IMAGE_NAME     = "${DOCKERHUB_USER}/cicd-demo"
+    DOCKERHUB_USER = "${env.DOCKERHUB_USER ?: 'mikesadler1'}"
+    IMAGE_NAME     = "${env.DOCKERHUB_USER ?: 'mikesadler1'}/cicd-pipeline"
     SONARQUBE_ENV  = 'MySonarQube'
   }
 
@@ -13,21 +13,29 @@ pipeline {
     }
 
     stage('SonarQube Scan') {
-  steps {
-    withSonarQubeEnv("${SONARQUBE_ENV}") {
-      withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-        sh '''
-          export SONAR_TOKEN="$SONAR_TOKEN"
-          /var/jenkins_home/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQubeScanner/bin/sonar-scanner \
-            -Dsonar.projectKey=cicd-pipeline \
-            -Dsonar.sources=app
-        '''
+      steps {
+        withSonarQubeEnv("${SONARQUBE_ENV}") {
+          withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+            // Use the configured scanner tool if you have it set up in Jenkins (recommended):
+            withEnv(["PATH+SONAR=${tool 'SonarQubeScanner'}/bin"]) {
+              sh '''
+                export SONAR_TOKEN="$SONAR_TOKEN"
+                sonar-scanner \
+                  -Dsonar.projectKey=cicd-pipeline \
+                  -Dsonar.sources=app
+              '''
+            }
+            // If you prefer the absolute path, comment the block above and uncomment below:
+            // sh '''
+            //   export SONAR_TOKEN="$SONAR_TOKEN"
+            //   /var/jenkins_home/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQubeScanner/bin/sonar-scanner \
+            //     -Dsonar.projectKey=cicd-pipeline \
+            //     -Dsonar.sources=app
+            // '''
+          }
+        }
       }
     }
-  }
-}
-
-
 
     stage('Build Image') {
       steps {
@@ -53,17 +61,19 @@ pipeline {
     stage('Deploy to Kubernetes') {
       steps {
         sh '''
-          # update image tag in deployment
-          sed -i "s|image: .*$|image: $IMAGE_NAME:${BUILD_NUMBER}|" k8s/deployment.yaml || true
-          kubectl apply -f k8s/
-          kubectl rollout status deployment/cicd-demo --timeout=120s
+          # update image tag in deployment (note the capital K in K8s/)
+          sed -i "s#image: .*#image: $IMAGE_NAME:${BUILD_NUMBER}#" K8s/deployment.yaml || true
+
+          kubectl apply -f K8s/
+          kubectl rollout status deployment/cicd-pipeline --timeout=120s
         '''
       }
     }
   }
 
   post {
-    success { echo ' Deploy succeeded' }
-    failure { echo ' Build failed' }
+    success { echo 'Deploy succeeded' }
+    failure { echo  'Build failed' }
   }
-}           
+}
+           
