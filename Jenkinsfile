@@ -13,20 +13,24 @@ pipeline {
     }
 
     stage('SonarQube Scan') {
-      steps {
-        withSonarQubeEnv("${SONARQUBE_ENV}") {
-          withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-            sh '''
-              sonar-scanner \
-                -Dsonar.projectKey=cicd-demo \
-                -Dsonar.sources=app \
-                -Dsonar.host.url=$SONAR_HOST_URL \
-                -Dsonar.login=$SONAR_TOKEN
-            '''
-          }
+  steps {
+    withSonarQubeEnv("${SONARQUBE_ENV}") {
+      withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+        script {
+          def scannerHome = tool 'SonarQubeScanner'  // Manage Jenkins → Tools name
+          sh """
+            "${scannerHome}/bin/sonar-scanner" \
+              -Dsonar.projectKey=cicd-pipeline \
+              -Dsonar.sources=app \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+          """
         }
       }
     }
+  }
+}
+
 
     stage('Build Image') {
       steps {
@@ -62,7 +66,7 @@ pipeline {
   }
 
   post {
-    success { echo '✅ Deploy succeeded' }
-    failure { echo '❌ Build failed' }
+    success { echo ' Deploy succeeded' }
+    failure { echo ' Build failed' }
   }
-}
+}           
