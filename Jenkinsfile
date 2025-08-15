@@ -16,20 +16,17 @@ pipeline {
   steps {
     withSonarQubeEnv("${SONARQUBE_ENV}") {
       withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-        script {
-          def scannerHome = tool 'SonarQubeScanner'  // Manage Jenkins → Tools name
-          sh """
-            "${scannerHome}/bin/sonar-scanner" \
-              -Dsonar.projectKey=cicd-pipeline \
-              -Dsonar.sources=app \
-              -Dsonar.host.url=$SONAR_HOST_URL \
-              -Dsonar.login=$SONAR_TOKEN
-          """
-        }
+        sh '''
+          export SONAR_TOKEN="$SONAR_TOKEN"
+          /var/jenkins_home/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQubeScanner/bin/sonar-scanner \
+            -Dsonar.projectKey=cicd-pipeline \
+            -Dsonar.sources=app
+        '''
       }
     }
   }
 }
+
 
 
     stage('Build Image') {
