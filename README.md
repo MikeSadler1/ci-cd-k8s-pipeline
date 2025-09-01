@@ -33,3 +33,15 @@ Service URL: `minikube service cicd-pipeline --url`
 - Pods pending? `kubectl describe pod <pod>`
 - Kubeconfig for Jenkins: copy `~/.kube/config` into Jenkins home
 - Sonar token invalid? Regenerate in SonarQube and update Jenkins credential
+
+## What i learned during this project
+- Fixed Docker image tagging issues that where causing deployment failures.
+- Discovered how to integrate SonarQube checks with build dates,forcing cleaner,more reliable code.
+- Practiced Terraform provisioning of jenkins infrastructure
+
+## Why this Project Matters
+- This pipeline simulates a real world CI/CD workflow that DevOps teams use every day.
+- It demonstrates the ability to Automate software build,quality checking, and deployments.
+- Managing Kubernetes workloads and container lifecycle
+- Keeping secret management secure and cleam
+- Working with infrastructure provisioning tools like Terraform 
